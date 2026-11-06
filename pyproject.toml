@@ -16,6 +16,10 @@ test = ["pytest>=8"]
 
 [project.scripts]
 scanmerge = "scanmerge.cli:main"
+scanmerge-ui = "scanmerge.web:main"
+
+[tool.setuptools.package-data]
+scanmerge = ["static/*.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -8,3 +8,6 @@ __pycache__/
 *.egg-info/
 .venv/
 .pytest_cache/
+
+# Local editor/agent settings
+.claude/

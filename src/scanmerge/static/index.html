@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>scanmerge</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='11' fill='%230F6E73'/%3E%3Cpath d='M7 12h10M12 7v10' stroke='white' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --brand: #0F6E73; --brand-dark: #0B5357; --brand-soft: #E3F0F0;
+    --ink: #1D2526; --ink-soft: #56605F; --line: #DCE3E3; --page: #F4F7F7; --card: #FFFFFF;
+    --danger: #B3261E; --danger-soft: #FBEAE9; --warn: #9A5B0F; --warn-soft: #FDF1E1; --ok: #1E7B45; --ok-soft: #E5F4EA;
+    --critical: #7B0000; --high: #E00000; --medium: #FFA500; --low: #4F81BD; --log: #D9D9D9;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--page); color: var(--ink);
+    font: 15px/1.5 "Inter", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; }
+  header { background: var(--card); border-bottom: 1px solid var(--line); }
+  header .bar { max-width: 520px; margin: 0 auto; padding: 14px 16px; display: flex; align-items: center; gap: 8px;
+    font-weight: 600; color: var(--brand); font-size: 17px; }
+  header .bar .site { margin-left: auto; font-weight: 500; font-size: 13px; background: var(--brand-soft);
+    border-radius: 999px; padding: 3px 10px; }
+  main { max-width: 520px; margin: 0 auto; padding: 24px 16px 48px; }
+  .screen { display: flex; flex-direction: column; gap: 16px; }
+  .screen[hidden] { display: none; }
+  svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round;
+    stroke-linejoin: round; flex: none; }
+  .hero { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .halo { width: 120px; height: 120px; border-radius: 50%; background: var(--brand-soft); display: grid; place-items: center; }
+  .halo span { width: 68px; height: 68px; border-radius: 50%; background: var(--card); display: grid; place-items: center;
+    color: var(--brand); box-shadow: 0 2px 8px rgba(15, 110, 115, .12); }
+  .halo svg.i { width: 30px; height: 30px; }
+  h1 { font-size: 26px; line-height: 1.25; margin: 8px 0 0; }
+  .lead { color: var(--ink-soft); margin: 0; max-width: 420px; }
+  label.field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field-label { font-size: 14px; font-weight: 500; }
+  .hint { font-weight: 400; color: var(--ink-soft); font-size: 13px; }
+  input[type=text] { font: inherit; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); }
+  input[type=text]:focus-visible, button:focus-visible, .zone:focus-within { outline: 3px solid rgba(15, 110, 115, .35); outline-offset: 2px; }
+  .zone { position: relative; border: 1.5px dashed #B9C7C7; border-radius: var(--radius); background: var(--card); padding: 12px;
+    display: flex; flex-direction: column; gap: 8px; transition: border-color .15s, background .15s; }
+  .zone.over { border-color: var(--brand); background: var(--brand-soft); }
+  .zone input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  .zone .pick { display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--brand); font-weight: 500;
+    font-size: 14px; padding: 8px; cursor: pointer; border-radius: 10px; }
+  .zone .pick:hover { background: var(--brand-soft); }
+  .files { display: flex; flex-direction: column; gap: 6px; }
+  .files:empty { display: none; }
+  .file { display: flex; align-items: center; gap: 8px; background: var(--brand-soft); border-radius: 10px; padding: 8px 10px; font-size: 14px; }
+  .file svg.i { color: var(--brand); }
+  .file .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file .size { color: var(--ink-soft); font-size: 12px; margin-left: auto; white-space: nowrap; }
+  .file button { border: 0; background: none; color: var(--ink-soft); cursor: pointer; padding: 2px; border-radius: 6px; display: grid; }
+  .file button:hover { color: var(--danger); }
+  .btn { font: inherit; font-weight: 600; font-size: 16px; border: 0; border-radius: var(--radius); padding: 15px 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--brand); color: #fff; width: 100%; }
+  .btn:hover { background: var(--brand-dark); }
+  .btn:disabled { background: #9DB8B9; cursor: not-allowed; }
+  .btn.secondary { background: var(--card); color: var(--ink); border: 1px solid var(--line); font-weight: 500; font-size: 15px; }
+  .btn.secondary:hover { background: var(--brand-soft); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--brand); background: var(--brand-soft);
+    border-radius: 999px; padding: 5px 11px; }
+  .chip svg.i { width: 15px; height: 15px; }
+  .back { align-self: flex-start; font: inherit; font-size: 14px; color: var(--brand); background: none; border: 0; cursor: pointer;
+    display: flex; align-items: center; gap: 4px; padding: 4px 0; }
+  .stack { display: flex; flex-direction: column; gap: 10px; }
+  .stack:empty { display: none; }
+  .alert { border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+  .alert .title { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+  .alert.danger { background: var(--danger-soft); border: 1px solid #F0B9B5; } .alert.danger .title { color: var(--danger); }
+  .alert.warn { background: var(--warn-soft); border: 1px solid #EFD2A8; } .alert.warn .title { color: var(--warn); }
+  .alert.ok { background: var(--ok-soft); border: 1px solid #B9DFC7; } .alert.ok .title { color: var(--ok); }
+  .alert ul { margin: 0; padding-left: 20px; }
+  .alert li + li { margin-top: 4px; }
+  .alert .ports { color: var(--ink-soft); font-size: 13px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); }
+  .stats div { padding: 12px 8px; text-align: center; font-size: 13px; color: var(--ink-soft); }
+  .stats div + div { border-left: 1px solid var(--line); }
+  .stats b { display: block; font-size: 22px; color: var(--ink); }
+  .sev-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .sev { font: inherit; border: 0; border-radius: 12px; padding: 10px 2px; text-align: center; font-size: 12px; cursor: pointer; }
+  .sev b { display: block; font-size: 22px; line-height: 1.2; }
+  .sev:hover { filter: brightness(1.08); }
+  .Critical { background: var(--critical); color: #fff; } .High { background: var(--high); color: #fff; }
+  .Medium { background: var(--medium); color: #1D2526; } .Low { background: var(--low); color: #fff; } .Log { background: var(--log); color: #1D2526; }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filters button { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+    border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+  .filters button[aria-pressed=true] { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .list { display: flex; flex-direction: column; gap: 10px; }
+  .finding { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px;
+    display: flex; flex-direction: column; gap: 4px; }
+  .pill { align-self: flex-start; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 9px; }
+  .finding .t { font-weight: 600; }
+  .finding .m { font-size: 13px; color: var(--ink-soft); word-break: break-word; }
+  .finding details { font-size: 13px; }
+  .finding summary { cursor: pointer; color: var(--brand); }
+  .finding details p { margin: 6px 0 0; }
+  .empty { text-align: center; color: var(--ink-soft); padding: 24px 0; }
+  .error { background: var(--danger-soft); color: var(--danger); border-radius: 12px; padding: 12px 14px; font-size: 14px; }
+  .error ul { margin: 6px 0 0; padding-left: 20px; }
+  .section-label { font-size: 13px; font-weight: 600; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .04em; margin: 4px 0 -6px; }
+  footer { text-align: center; color: var(--ink-soft); font-size: 12px; padding-bottom: 24px; }
+</style>
+</head>
+<body>
+<header><div class="bar">
+  <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 12l6-6"/></svg>
+  scanmerge
+  <span class="site" id="site-badge" hidden></span>
+</div></header>
+
+<main>
+  <!-- 1. Import -->
+  <section class="screen" id="import" aria-labelledby="import-title">
+    <div class="hero">
+      <div class="halo"><span><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4.6 4.4 0 0 1 0-9 5 4.5 0 0 1 11 2h1a3.5 3.5 0 0 1 0 7h-1"/><path d="M9 15l3-3 3 3M12 12v9"/></svg></span></div>
+      <h1 id="import-title">Merge your scans</h1>
+      <p class="lead">Add the Nmap and OpenVAS XML files. scanmerge builds the non-conformity report and finds hosts that nobody scanned for vulnerabilities.</p>
+    </div>
+
+    <label class="field">Network / site
+      <input type="text" id="site" placeholder="e.g. Store A" maxlength="200" autocomplete="off">
+    </label>
+
+    <div class="field">
+      <span class="field-label" id="nmap-label">Nmap files <span class="hint">· one or more, from nmap -oX</span></span>
+      <div class="zone" id="nmap-zone">
+        <div id="nmap-list" class="files"></div>
+        <label class="pick"><input type="file" id="nmap-input" accept=".xml,text/xml,application/xml" multiple aria-labelledby="nmap-label">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Drop or choose files</label>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="field-label" id="openvas-label">OpenVAS / GVM report <span class="hint">· exported as XML</span></span>
+      <div class="zone" id="openvas-zone">
+        <div id="openvas-list" class="files"></div>
+        <label class="pick"><input type="file" id="openvas-input" accept=".xml,text/xml,application/xml" aria-labelledby="openvas-label">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span id="openvas-pick">Drop or choose the report</span></label>
+      </div>
+    </div>
+
+    <div id="import-error" class="error" role="alert" hidden></div>
+
+    <button class="btn" id="analyse" disabled>
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4v5a5 5 0 0 0 5 5h7M15 11l3 3-3 3M6 20v-3"/></svg>
+      <span id="analyse-label">Analyse</span>
+    </button>
+
+    <div class="chips">
+      <span class="chip"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Stays on this computer</span>
+      <span class="chip"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Safe XML parsing</span>
+      <span class="chip"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 4v16"/></svg>Excel report</span>
+    </div>
+  </section>
+
+  <!-- 2. Results -->
+  <section class="screen" id="results" hidden aria-labelledby="results-title">
+    <button class="back" data-go="import"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>New analysis</button>
+    <h1 id="results-title" style="margin:0">Results</h1>
+    <div id="input-errors" class="stack"></div>
+    <div id="coverage" class="stack"></div>
+    <div class="stats">
+      <div>Hosts seen<b id="stat-seen"></b></div>
+      <div>Analysed<b id="stat-analysed"></b></div>
+      <div>Coverage gaps<b id="stat-gaps"></b></div>
+    </div>
+    <p class="section-label">Findings by severity</p>
+    <div class="sev-grid" id="sev-grid"></div>
+    <button class="btn" id="see-findings"></button>
+    <button class="btn secondary" data-download>
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Download Excel report</button>
+  </section>
+
+  <!-- 3. Findings -->
+  <section class="screen" id="findings" hidden aria-labelledby="findings-title">
+    <button class="back" data-go="results"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Results</button>
+    <h1 id="findings-title" style="margin:0">Findings</h1>
+    <div class="filters" id="filters" role="group" aria-label="Filter by severity"></div>
+    <div class="list" id="finding-list" aria-live="polite"></div>
+    <button class="btn" data-download>
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Download Excel report</button>
+  </section>
+</main>
+<footer>scanmerge · runs locally on 127.0.0.1</footer>
+
+<script>
+"use strict";
+// Everything that comes from the scan files is inserted with textContent, never innerHTML.
+const SEVERITIES = ["Critical", "High", "Medium", "Low", "Log"];
+const ICON_FILE = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M10 13l-2 2 2 2M14 13l2 2-2 2"/></svg>';
+const ICON_X = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+const ICON_EYE_OFF = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.4 5.4A9.8 9.8 0 0 1 12 5c4.5 0 8 4 9 7a12 12 0 0 1-2.6 3.8M6.2 6.6A12 12 0 0 0 3 12c1 3 4.5 7 9 7 1.7 0 3.2-.5 4.5-1.3"/></svg>';
+const ICON_WARN = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>';
+const ICON_OK = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>';
+
+const $ = (sel) => document.querySelector(sel);
+const state = { nmap: [], openvas: null, result: null, filter: "All" };
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined && text !== null) node.textContent = text;
+  return node;
+}
+
+function show(id) {
+  document.querySelectorAll(".screen").forEach((s) => { s.hidden = s.id !== id; });
+  $("#site-badge").hidden = id === "import" || !state.result?.site;
+  window.scrollTo(0, 0);
+}
+
+function formatSize(bytes) {
+  return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
+}
+
+function fileRow(file, onRemove) {
+  const row = el("div", "file");
+  row.insertAdjacentHTML("beforeend", ICON_FILE);
+  row.append(el("span", "name", file.name), el("span", "size", formatSize(file.size)));
+  const remove = el("button");
+  remove.type = "button";
+  remove.setAttribute("aria-label", `Remove ${file.name}`);
+  remove.innerHTML = ICON_X;
+  remove.addEventListener("click", onRemove);
+  row.append(remove);
+  return row;
+}
+
+function renderFiles() {
+  $("#nmap-list").replaceChildren(...state.nmap.map((f, i) => fileRow(f, () => { state.nmap.splice(i, 1); renderFiles(); })));
+  $("#openvas-list").replaceChildren(...(state.openvas ? [fileRow(state.openvas, () => { state.openvas = null; renderFiles(); })] : []));
+  $("#openvas-pick").textContent = state.openvas ? "Replace the report" : "Drop or choose the report";
+  $("#analyse").disabled = !(state.nmap.length && state.openvas);
+}
+
+function dropZone(zoneSel, inputSel, onFiles) {
+  const zone = $(zoneSel), input = $(inputSel);
+  input.addEventListener("change", () => { onFiles([...input.files]); input.value = ""; });
+  zone.addEventListener("dragover", (e) => { e.preventDefault(); zone.classList.add("over"); });
+  zone.addEventListener("dragleave", () => zone.classList.remove("over"));
+  zone.addEventListener("drop", (e) => { e.preventDefault(); zone.classList.remove("over"); onFiles([...e.dataTransfer.files]); });
+}
+
+function setError(target, message, details = []) {
+  const box = $(target);
+  box.replaceChildren();
+  box.hidden = !message;
+  if (!message) return;
+  box.append(el("div", null, message));
+  if (details.length) {
+    const ul = el("ul");
+    details.forEach((d) => ul.append(el("li", null, d)));
+    box.append(ul);
+  }
+}
+
+const toBase64 = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+  reader.onerror = () => reject(reader.error);
+  reader.readAsDataURL(file);
+});
+const pack = async (file) => ({ name: file.name, content: await toBase64(file) });
+
+async function analyse() {
+  $("#analyse").disabled = true;
+  $("#analyse-label").textContent = "Analysing…";
+  setError("#import-error", "");
+  try {
+    const body = {
+      site: $("#site").value.trim(),
+      nmap: await Promise.all(state.nmap.map(pack)),
+      openvas: await pack(state.openvas),
+    };
+    const response = await fetch("/api/analyse", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    const data = await response.json().catch(() => ({ error: "Unexpected response from the scanmerge server." }));
+    if (!response.ok) { setError("#import-error", data.error, data.errors || []); return; }
+    state.result = data;
+    renderResults();
+    show("results");
+  } catch (err) {
+    setError("#import-error", "Could not reach the scanmerge server. Is scanmerge-ui still running?");
+  } finally {
+    $("#analyse-label").textContent = "Analyse";
+    renderFiles();
+  }
+}
+
+function hostList(hosts) {
+  const ul = el("ul");
+  hosts.forEach((h) => {
+    const li = el("li");
+    li.append(el("b", null, h.ip));
+    if (h.hostname) li.append(document.createTextNode(` ${h.hostname}`));
+    if (h.ports.length) li.append(el("div", "ports", `Open: ${h.ports.join(", ")}`));
+    ul.append(li);
+  });
+  return ul;
+}
+
+function alertBox(kind, icon, title, body) {
+  const box = el("div", `alert ${kind}`);
+  const head = el("div", "title");
+  head.insertAdjacentHTML("beforeend", icon);
+  head.append(el("span", null, title));
+  box.append(head);
+  if (body) box.append(body);
+  return box;
+}
+
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+function renderResults() {
+  const r = state.result, s = r.summary;
+  const badge = $("#site-badge");
+  badge.textContent = r.site;
+  badge.hidden = !r.site;
+
+  const errors = [];
+  if (r.errors.length) {
+    const ul = el("ul");
+    r.errors.forEach((e) => ul.append(el("li", null, e)));
+    errors.push(alertBox("warn", ICON_WARN, `${plural(r.errors.length, "file was", "files were")} skipped`, ul));
+  }
+  $("#input-errors").replaceChildren(...errors);
+
+  const coverage = [];
+  if (!s.coverage_checked) {
+    coverage.push(alertBox("warn", ICON_WARN, "Coverage check skipped",
+      el("span", null, "It needs at least one valid Nmap file and the OpenVAS report.")));
+  } else {
+    if (r.not_analysed.length) {
+      coverage.push(alertBox("danger", ICON_EYE_OFF,
+        `${plural(r.not_analysed.length, "host is", "hosts are")} up but not analysed by OpenVAS`, hostList(r.not_analysed)));
+    }
+    if (r.not_in_nmap.length) {
+      coverage.push(alertBox("warn", ICON_WARN,
+        `${plural(r.not_in_nmap.length, "host was", "hosts were")} analysed by OpenVAS but not seen by Nmap`, hostList(r.not_in_nmap)));
+    }
+    if (!r.not_analysed.length && !r.not_in_nmap.length) {
+      coverage.push(alertBox("ok", ICON_OK, "Every host up in Nmap was analysed by OpenVAS"));
+    }
+  }
+  $("#coverage").replaceChildren(...coverage);
+
+  $("#stat-seen").textContent = s.hosts_seen;
+  $("#stat-analysed").textContent = s.analysed ?? "n/a";
+  $("#stat-gaps").textContent = s.coverage_checked ? r.not_analysed.length : "n/a";
+
+  $("#sev-grid").replaceChildren(...SEVERITIES.map((sev) => {
+    const tile = el("button", `sev ${sev}`);
+    tile.type = "button";
+    tile.setAttribute("aria-label", `${s.by_severity[sev]} ${sev}: show these findings`);
+    tile.append(el("b", null, s.by_severity[sev]), document.createTextNode(sev));
+    tile.addEventListener("click", () => openFindings(sev));
+    return tile;
+  }));
+  $("#see-findings").textContent = s.findings ? `See ${plural(s.findings, "finding", "findings")}` : "No findings";
+  $("#see-findings").disabled = !s.findings;
+}
+
+function openFindings(filter) {
+  state.filter = filter;
+  renderFindings();
+  show("findings");
+}
+
+function renderFindings() {
+  const all = state.result.findings;
+  $("#filters").replaceChildren(...["All", ...SEVERITIES].map((name) => {
+    const count = name === "All" ? all.length : state.result.summary.by_severity[name];
+    const b = el("button", null, `${name} ${count}`);
+    b.type = "button";
+    b.setAttribute("aria-pressed", String(state.filter === name));
+    b.addEventListener("click", () => { state.filter = name; renderFindings(); });
+    return b;
+  }));
+
+  const shown = state.filter === "All" ? all : all.filter((f) => f.severity === state.filter);
+  const list = $("#finding-list");
+  if (!shown.length) { list.replaceChildren(el("p", "empty", "No findings with this severity.")); return; }
+  list.replaceChildren(...shown.map((f) => {
+    const card = el("article", "finding");
+    card.append(el("span", `pill ${f.severity}`, f.cvss === null ? f.severity : `${f.severity} ${f.cvss.toFixed(1)}`));
+    card.append(el("span", "t", f.title || "(untitled)"));
+    const where = [f.hostname ? `${f.ip} (${f.hostname})` : f.ip, f.port, f.service].filter(Boolean).join(" · ");
+    card.append(el("span", "m", where));
+    if (f.cves.length) card.append(el("span", "m", f.cves.join(", ")));
+    if (f.solution) {
+      const details = el("details");
+      details.append(el("summary", null, "Solution"), el("p", null, f.solution));
+      card.append(details);
+    }
+    return card;
+  }));
+}
+
+function downloadExcel() {
+  const bytes = Uint8Array.from(atob(state.result.excel), (c) => c.charCodeAt(0));
+  const url = URL.createObjectURL(new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+  const a = el("a");
+  a.href = url;
+  a.download = state.result.filename;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+dropZone("#nmap-zone", "#nmap-input", (files) => { state.nmap.push(...files); renderFiles(); });
+dropZone("#openvas-zone", "#openvas-input", (files) => { if (files[0]) state.openvas = files[0]; renderFiles(); });
+// A file dropped outside the zones must not make the browser navigate away from the page.
+["dragover", "drop"].forEach((type) => window.addEventListener(type, (e) => e.preventDefault()));
+$("#analyse").addEventListener("click", analyse);
+$("#see-findings").addEventListener("click", () => openFindings("All"));
+document.querySelectorAll("[data-download]").forEach((b) => b.addEventListener("click", downloadExcel));
+document.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => show(b.dataset.go)));
+renderFiles();
+</script>
+</body>
+</html>
