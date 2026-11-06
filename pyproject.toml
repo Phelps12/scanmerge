@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scanmerge"
-version = "0.1.0"
+version = "0.2.0"
 description = "Merge Nmap and OpenVAS/GVM results into an Excel non-conformity report and flag coverage gaps."
 readme = "README.md"
 license = "MIT"

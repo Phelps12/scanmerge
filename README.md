@@ -18,6 +18,16 @@ scanmerge does the merge and reports those blind spots:
 
 Input XML is treated as untrusted: it is parsed with [defusedxml](https://pypi.org/project/defusedxml/), so files with entity declarations (XXE, billion laughs) are rejected, and text from the scans is always written to Excel as text, never as a formula.
 
+## Screenshots
+
+The local web interface (`scanmerge-ui`), with synthetic data:
+
+<p>
+  <img src="docs/screenshots/1-import.jpg" alt="Import screen with two Nmap files and one OpenVAS report" width="260">
+  <img src="docs/screenshots/2-results.jpg" alt="Results screen showing a host not analysed by OpenVAS and findings by severity" width="260">
+  <img src="docs/screenshots/3-findings.jpg" alt="Findings grouped by vulnerability, with the affected hosts listed" width="260">
+</p>
+
 ## Installation
 
 Requires Python 3.11+.
@@ -126,6 +136,10 @@ src/scanmerge/
   static/      the single-page UI
 tests/         pytest suite; fixtures are synthetic
 ```
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
