@@ -1,5 +1,7 @@
 # scanmerge
 
+[![tests](https://github.com/Phelps12/scanmerge/actions/workflows/tests.yml/badge.svg)](https://github.com/Phelps12/scanmerge/actions/workflows/tests.yml)
+
 Merge Nmap and OpenVAS/GVM results into an Excel non-conformity report and flag coverage gaps.
 
 ## The problem
