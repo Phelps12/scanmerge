@@ -11,7 +11,7 @@ from . import __version__
 from .excel import write_report
 from .merge import MergedScan, merge
 from .models import SEVERITIES
-from .parsers import ScanParseError, parse_nmap, parse_openvas
+from .parsers import load_scans
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -53,24 +53,10 @@ def _print_summary(merged: MergedScan, site: str, output: str) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    skipped: list[str] = []
-
-    nmap = None
-    for path in args.nmap:
-        try:
-            hosts, services = parse_nmap(path)
-        except ScanParseError as e:
-            _error(str(e))
-            skipped.append(path)
-            continue
-        nmap = (nmap[0] + hosts, nmap[1] + services) if nmap else (hosts, services)
-
-    try:
-        openvas = parse_openvas(args.openvas)
-    except ScanParseError as e:
-        _error(str(e))
-        skipped.append(args.openvas)
-        openvas = None
+    nmap, openvas, errors = load_scans(args.nmap, args.openvas)
+    for _, message in errors:
+        _error(message)
+    skipped = [name for name, _ in errors]
 
     if nmap is None and openvas is None:
         _error("no valid input file, nothing to report")

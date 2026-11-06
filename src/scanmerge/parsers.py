@@ -5,6 +5,7 @@ entity declarations (XXE, billion laughs) and external references.
 """
 
 from pathlib import Path
+from typing import BinaryIO
 from xml.etree.ElementTree import Element
 
 from defusedxml import DefusedXmlException
@@ -12,27 +13,60 @@ from defusedxml.ElementTree import ParseError, parse
 
 from .models import Finding, Host, Service
 
+# A file path, or an in-memory upload (e.g. BytesIO) with a `.name` attribute.
+Source = str | Path | BinaryIO
+
 
 class ScanParseError(ValueError):
     """An input file could not be used; the message is meant for the user."""
 
 
-def _load(path: str | Path) -> Element:
+def source_name(source: Source) -> str:
+    return getattr(source, "name", "upload") if hasattr(source, "read") else str(source)
+
+
+def _load(source: Source) -> Element:
+    name = source_name(source)
     try:
-        return parse(str(path)).getroot()
+        return parse(source if hasattr(source, "read") else str(source)).getroot()
     except DefusedXmlException as e:
-        raise ScanParseError(f"{path}: rejected unsafe XML ({type(e).__name__})") from e
+        raise ScanParseError(f"{name}: rejected unsafe XML ({type(e).__name__})") from e
     except ParseError as e:
-        raise ScanParseError(f"{path}: malformed XML ({e})") from e
+        raise ScanParseError(f"{name}: malformed XML ({e})") from e
     except OSError as e:
-        raise ScanParseError(f"{path}: cannot read file ({e.strerror or e})") from e
+        raise ScanParseError(f"{name}: cannot read file ({e.strerror or e})") from e
 
 
-def parse_nmap(path: str | Path) -> tuple[list[Host], list[Service]]:
+def load_scans(
+    nmap_sources: list[Source], openvas_source: Source
+) -> tuple[tuple[list[Host], list[Service]] | None, tuple[list[Host], list[Finding]] | None, list[tuple[str, str]]]:
+    """Parse every input, skipping invalid files.
+
+    Returns (nmap, openvas, errors): a side is None when none of its files was
+    valid, and errors are (file name, message) pairs.
+    """
+    errors: list[tuple[str, str]] = []
+    nmap = None
+    for src in nmap_sources:
+        try:
+            hosts, services = parse_nmap(src)
+        except ScanParseError as e:
+            errors.append((source_name(src), str(e)))
+            continue
+        nmap = (nmap[0] + hosts, nmap[1] + services) if nmap else (hosts, services)
+    try:
+        openvas = parse_openvas(openvas_source)
+    except ScanParseError as e:
+        errors.append((source_name(openvas_source), str(e)))
+        openvas = None
+    return nmap, openvas, errors
+
+
+def parse_nmap(path: Source) -> tuple[list[Host], list[Service]]:
     """Return the hosts that are up and their open ports from an `nmap -oX` file."""
     root = _load(path)
     if root.tag != "nmaprun":
-        raise ScanParseError(f"{path}: not an Nmap XML file (root element <{root.tag}>)")
+        raise ScanParseError(f"{source_name(path)}: not an Nmap XML file (root element <{root.tag}>)")
 
     hosts: list[Host] = []
     services: list[Service] = []
@@ -91,7 +125,7 @@ def _cves(nvt: Element | None) -> list[str]:
     return sorted({c for c in cves if c and c.upper() != "NOCVE"})
 
 
-def parse_openvas(path: str | Path) -> tuple[list[Host], list[Finding]]:
+def parse_openvas(path: Source) -> tuple[list[Host], list[Finding]]:
     """Return the analysed hosts and the results of an OpenVAS/GVM XML report.
 
     A host counts as analysed if the report lists it under <host>, even with no
@@ -99,7 +133,7 @@ def parse_openvas(path: str | Path) -> tuple[list[Host], list[Finding]]:
     """
     root = _load(path)
     if root.tag not in ("report", "get_reports_response"):
-        raise ScanParseError(f"{path}: not an OpenVAS/GVM report (root element <{root.tag}>)")
+        raise ScanParseError(f"{source_name(path)}: not an OpenVAS/GVM report (root element <{root.tag}>)")
 
     hosts: dict[str, Host] = {}
     for report in root.iter("report"):

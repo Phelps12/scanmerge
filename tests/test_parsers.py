@@ -1,9 +1,10 @@
+import io
 from pathlib import Path
 
 import pytest
 
 from scanmerge.models import Service
-from scanmerge.parsers import ScanParseError, parse_nmap, parse_openvas
+from scanmerge.parsers import ScanParseError, load_scans, parse_nmap, parse_openvas
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -101,3 +102,23 @@ def test_openvas_rejects_external_entity():
 def test_openvas_rejects_nmap_file():
     with pytest.raises(ScanParseError, match="not an OpenVAS/GVM report"):
         parse_openvas(FIXTURES / "nmap_store_tcp.xml")
+
+
+def test_parses_in_memory_upload_and_reports_its_name():
+    upload = io.BytesIO((FIXTURES / "nmap_store_udp.xml").read_bytes())
+    upload.name = "scan_udp.xml"
+    _, services = parse_nmap(upload)
+    assert services[0].port == "161/udp"
+
+    bad = io.BytesIO(b"<nmaprun>")
+    bad.name = "broken.xml"
+    with pytest.raises(ScanParseError, match="^broken.xml: malformed XML"):
+        parse_nmap(bad)
+
+
+def test_load_scans_skips_invalid_files():
+    nmap, openvas, errors = load_scans([str(FIXTURES / "xxe.xml"), str(FIXTURES / "nmap_store_tcp.xml")],
+                                       str(FIXTURES / "malformed.xml"))
+    assert len(nmap[0]) == 4
+    assert openvas is None
+    assert [name for name, _ in errors] == [str(FIXTURES / "xxe.xml"), str(FIXTURES / "malformed.xml")]

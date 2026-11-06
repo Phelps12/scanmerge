@@ -51,7 +51,7 @@ def _header(ws: Worksheet, columns: list[str], widths: dict[str, int], manual: s
     ws.freeze_panes = "A2"
 
 
-def _service_label(merged: MergedScan, ip: str, port: str) -> str:
+def service_label(merged: MergedScan, ip: str, port: str) -> str:
     s = merged.services.get((ip, port))
     if s is None:
         return ""
@@ -68,7 +68,7 @@ def write_report(path: str | Path, merged: MergedScan, site: str = "", skipped: 
              "CVSS": 7, "Severity": 10, "Solution": 50, "Recommendation": 40},
             set(MANUAL_COLUMNS))
     for f in merged.findings:
-        _append(ws, [site, f.ip, f.hostname, f.port, _service_label(merged, f.ip, f.port), f.title,
+        _append(ws, [site, f.ip, f.hostname, f.port, service_label(merged, f.ip, f.port), f.title,
                      ", ".join(f.cves), f.cvss, f.severity, f.source, f.solution] + [None] * len(MANUAL_COLUMNS))
         fill, colour = SEVERITY_STYLE[f.severity]
         cell = ws.cell(ws.max_row, AUTO_COLUMNS.index("Severity") + 1)
@@ -82,7 +82,7 @@ def write_report(path: str | Path, merged: MergedScan, site: str = "", skipped: 
                          ("Not seen by Nmap", merged.not_in_nmap)):
         for h in hosts:
             ports = ", ".join(
-                f"{s.port} {_service_label(merged, s.ip, s.port)}".strip() for s in merged.open_ports(h.ip)
+                f"{s.port} {service_label(merged, s.ip, s.port)}".strip() for s in merged.open_ports(h.ip)
             )
             _append(ws, [label, h.ip, h.hostname, ports])
     ws.auto_filter.ref = ws.dimensions
