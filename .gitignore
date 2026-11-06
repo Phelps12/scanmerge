@@ -1,0 +1,10 @@
+# Scan inputs and reports can contain real network data: never commit them.
+*.xml
+*.xlsx
+reports/
+!tests/fixtures/*.xml
+
+__pycache__/
+*.egg-info/
+.venv/
+.pytest_cache/
