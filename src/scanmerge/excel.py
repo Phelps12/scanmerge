@@ -1,4 +1,4 @@
-"""Write the merged scan to an Excel workbook with three sheets."""
+"""Write the merged scan to an Excel workbook (findings, grouped issues, gaps, summary)."""
 
 from datetime import date
 from pathlib import Path
@@ -8,12 +8,13 @@ from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Font, PatternFill
 from openpyxl.worksheet.worksheet import Worksheet
 
-from .merge import MergedScan
+from .merge import MergedScan, by_vulnerability
 from .models import SEVERITIES
 
 AUTO_COLUMNS = ["Network/Site", "Host", "Hostname", "Port", "Service", "Title", "CVE(s)", "CVSS",
                 "Severity", "Source", "Solution"]
 MANUAL_COLUMNS = ["Recommendation", "Cost", "Owner", "Deadline", "Status"]
+VULN_COLUMNS = ["Severity", "CVSS", "Title", "CVE(s)", "Hosts", "Affected", "Solution"]
 GAP_COLUMNS = ["Gap", "Host", "Hostname", "Open ports (Nmap)"]
 
 # (fill, font colour) per severity
@@ -51,6 +52,13 @@ def _header(ws: Worksheet, columns: list[str], widths: dict[str, int], manual: s
     ws.freeze_panes = "A2"
 
 
+def _colour_severity(ws: Worksheet, column: int, severity: str) -> None:
+    fill, colour = SEVERITY_STYLE[severity]
+    cell = ws.cell(ws.max_row, column)
+    cell.fill = PatternFill("solid", fgColor=fill)
+    cell.font = Font(bold=True, color=colour)
+
+
 def service_label(merged: MergedScan, ip: str, port: str) -> str:
     s = merged.services.get((ip, port))
     if s is None:
@@ -70,10 +78,19 @@ def write_report(path: str | Path, merged: MergedScan, site: str = "", skipped: 
     for f in merged.findings:
         _append(ws, [site, f.ip, f.hostname, f.port, service_label(merged, f.ip, f.port), f.title,
                      ", ".join(f.cves), f.cvss, f.severity, f.source, f.solution] + [None] * len(MANUAL_COLUMNS))
-        fill, colour = SEVERITY_STYLE[f.severity]
-        cell = ws.cell(ws.max_row, AUTO_COLUMNS.index("Severity") + 1)
-        cell.fill = PatternFill("solid", fgColor=fill)
-        cell.font = Font(bold=True, color=colour)
+        _colour_severity(ws, AUTO_COLUMNS.index("Severity") + 1, f.severity)
+    ws.auto_filter.ref = ws.dimensions
+
+    ws = wb.create_sheet("By vulnerability")
+    _header(ws, VULN_COLUMNS + MANUAL_COLUMNS,
+            {"Title": 50, "CVE(s)": 28, "CVSS": 7, "Severity": 10, "Hosts": 7, "Affected": 60, "Solution": 50,
+             "Recommendation": 40},
+            set(MANUAL_COLUMNS))
+    for v in by_vulnerability(merged.findings):
+        affected = ", ".join(f"{f.ip} {f.port}" for f in v.affected)
+        _append(ws, [v.severity, v.cvss, v.title, ", ".join(v.cves), v.host_count, affected, v.solution]
+                + [None] * len(MANUAL_COLUMNS))
+        _colour_severity(ws, VULN_COLUMNS.index("Severity") + 1, v.severity)
     ws.auto_filter.ref = ws.dimensions
 
     ws = wb.create_sheet("Coverage gaps")
@@ -98,6 +115,7 @@ def write_report(path: str | Path, merged: MergedScan, site: str = "", skipped: 
         ("Coverage gaps (up in Nmap, not analysed)", len(merged.not_analysed) if checked else "n/a"),
         ("Analysed by OpenVAS, not seen by Nmap", len(merged.not_in_nmap) if checked else "n/a"),
         ("Findings", len(merged.findings)),
+        ("Distinct vulnerabilities", len(by_vulnerability(merged.findings))),
     ]
     rows += [(f"  {sev}", sum(f.severity == sev for f in merged.findings)) for sev in SEVERITIES]
     rows += [("Skipped input file", name) for name in skipped]

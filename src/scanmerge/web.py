@@ -18,7 +18,7 @@ from importlib.resources import files
 
 from . import __version__
 from .excel import service_label, write_report
-from .merge import merge
+from .merge import by_vulnerability, merge
 from .models import SEVERITIES
 from .parsers import load_scans
 
@@ -104,6 +104,18 @@ def analyse(payload) -> tuple[int, dict]:
                 "solution": f.solution,
             }
             for f in merged.findings
+        ],
+        "vulnerabilities": [
+            {
+                "title": v.title,
+                "cves": v.cves,
+                "cvss": v.cvss,
+                "severity": v.severity,
+                "solution": v.solution,
+                "hosts": v.host_count,
+                "affected": [{"ip": f.ip, "hostname": f.hostname, "port": f.port} for f in v.affected],
+            }
+            for v in by_vulnerability(merged.findings)
         ],
         "filename": f"scanmerge_{slug}.xlsx" if slug else "scanmerge_report.xlsx",
         "excel": base64.b64encode(excel.getvalue()).decode("ascii"),

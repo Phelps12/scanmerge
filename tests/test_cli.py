@@ -18,7 +18,7 @@ def test_writes_report_and_prints_summary(tmp_path, capsys):
     code = main(["--nmap", TCP, "--nmap", UDP, "--openvas", OPENVAS, "--site", "Store A", "-o", str(out)])
 
     assert code == 0
-    assert load_workbook(out).sheetnames == ["Non-conformities", "Coverage gaps", "Summary"]
+    assert load_workbook(out).sheetnames == ["Non-conformities", "By vulnerability", "Coverage gaps", "Summary"]
     stdout = capsys.readouterr().out
     assert "Hosts seen: 5 | analysed by OpenVAS: 4 | coverage gaps: 1" in stdout
     assert "Findings: 6 (Critical 1, High 2, Medium 1, Low 1, Log 1)" in stdout

@@ -69,7 +69,7 @@ For people who prefer not to use the terminal, the same merge runs behind a loca
 scanmerge-ui
 ```
 
-It opens `http://127.0.0.1:8780/` in the browser (`--port` to change it, `--no-browser` to skip opening). The page has three steps: add the Nmap files and the OpenVAS report, see the coverage gaps and the count per severity, then browse the findings by severity and download the Excel report, identical to the CLI one. Stop it with Ctrl+C.
+It opens `http://127.0.0.1:8780/` in the browser (`--port` to change it, `--no-browser` to skip opening). The page has three steps: add the Nmap files and the OpenVAS report, see the coverage gaps and the count per severity, then browse the findings by severity, grouped by vulnerability or one by one, and download the Excel report, identical to the CLI one. Stop it with Ctrl+C.
 
 The server only listens on 127.0.0.1, so other machines on the network cannot reach it. Uploads are processed in memory and never written to disk. It uses only the Python standard library, the page loads nothing from the internet, and requests sent with a foreign `Host` header are refused (DNS rebinding).
 
@@ -90,7 +90,7 @@ WARNING: 198.51.100.7 was analysed by OpenVAS but not seen by Nmap
 Report written to reports/demo.xlsx
 ```
 
-The workbook has three sheets:
+The workbook has four sheets:
 
 1. **Non-conformities**: one row per finding, with columns filled by the tool (Network/Site, Host, Hostname, Port, Service, Title, CVE(s), CVSS, Severity, Source, Solution) and empty columns to fill in by hand (Recommendation, Cost, Owner, Deadline, Status). Frozen header, filters, severity colours.
 
@@ -100,14 +100,16 @@ The workbook has three sheets:
    | 198.51.100.7 | 445/tcp | | Microsoft SMBv1 Remote Code Execution (MS17-010) | CVE-2017-0144 | 8.1 | High |
    | 192.0.2.10 | 443/tcp | https (nginx 1.18.0) | OpenSSL TLS 'heartbeat' Extension Information Disclosure (Heartbleed) | CVE-2014-0160 | 7.5 | High |
 
-2. **Coverage gaps**: hosts not analysed by OpenVAS, with the open ports Nmap saw, plus hosts analysed by OpenVAS but missing from Nmap.
+2. **By vulnerability**: one row per issue (NVT) with the number of hosts and every host/port it affects, so the fix can be planned once for all of them. Same manual columns as Non-conformities.
+
+3. **Coverage gaps**: hosts not analysed by OpenVAS, with the open ports Nmap saw, plus hosts analysed by OpenVAS but missing from Nmap.
 
    | Gap | Host | Hostname | Open ports (Nmap) |
    |---|---|---|---|
    | Not analysed by OpenVAS | 192.0.2.30 | pos01.example.test | 3389/tcp ms-wbt-server |
    | Not seen by Nmap | 198.51.100.7 | | |
 
-3. **Summary**: counts by severity, hosts seen, hosts analysed and coverage gaps.
+4. **Summary**: counts by severity, distinct vulnerabilities, hosts seen, hosts analysed, coverage gaps and input warnings.
 
 Severity follows the CVSS score: 0 = Log, 0.1–3.9 = Low, 4.0–6.9 = Medium, 7.0–8.9 = High, 9.0–10 = Critical.
 

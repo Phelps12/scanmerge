@@ -46,7 +46,7 @@ def test_analyse_returns_summary_gaps_findings_and_excel():
     assert body["filename"] == "scanmerge_Store_A.xlsx"
 
     wb = load_workbook(io.BytesIO(base64.b64decode(body["excel"])))
-    assert wb.sheetnames == ["Non-conformities", "Coverage gaps", "Summary"]
+    assert wb.sheetnames == ["Non-conformities", "By vulnerability", "Coverage gaps", "Summary"]
 
 
 def test_analyse_reports_skipped_files_by_upload_name():
@@ -127,3 +127,10 @@ def test_server_rejects_bad_json_and_unknown_paths(server):
 def test_analyse_returns_warnings():
     status, body = analyse(_payload())
     assert status == 200 and body["warnings"] == []
+
+
+def test_analyse_groups_by_vulnerability():
+    _, body = analyse(_payload())
+    assert len(body["vulnerabilities"]) == 6
+    first = body["vulnerabilities"][0]
+    assert (first["severity"], first["hosts"], first["affected"][0]["port"]) == ("Critical", 1, "80/tcp")

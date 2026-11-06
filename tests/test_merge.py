@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from scanmerge.merge import ip_key, merge
+from scanmerge.merge import by_vulnerability, ip_key, merge
 from scanmerge.models import Finding, Host, Service
 from scanmerge.parsers import parse_nmap, parse_openvas
 
@@ -101,3 +101,20 @@ def test_warns_when_nmap_and_openvas_share_no_host():
 def test_no_overlap_warning_when_hosts_match():
     result = merge(_nmap(), parse_openvas(FIXTURES / "openvas_store.xml"))
     assert result.warnings == []
+
+
+def test_groups_findings_by_vulnerability():
+    findings = [
+        Finding("192.0.2.10", "443/tcp", "TLS 1.0", 4.3, ["CVE-2011-3389"], "", "openvas", "oid.tls"),
+        Finding("192.0.2.11", "443/tcp", "TLS 1.0", 4.3, [], "Disable TLS 1.0.", "openvas", "oid.tls"),
+        Finding("192.0.2.10", "8443/tcp", "TLS 1.0", 4.3, [], "", "openvas", "oid.tls"),
+        Finding("192.0.2.12", "80/tcp", "Old Apache", 9.8, ["CVE-2021-41773"], "Update.", "openvas", "oid.apache"),
+        Finding("192.0.2.10", "general/tcp", "TCP timestamps", 2.6, [], "", "openvas", ""),
+    ]
+    groups = by_vulnerability(findings)
+
+    assert [g.title for g in groups] == ["Old Apache", "TLS 1.0", "TCP timestamps"]
+    tls = groups[1]
+    assert (len(tls.affected), tls.host_count) == (3, 2)
+    assert tls.cves == ["CVE-2011-3389"]
+    assert tls.solution == "Disable TLS 1.0."  # first non-empty solution

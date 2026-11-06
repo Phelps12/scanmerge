@@ -17,9 +17,9 @@ def _report(tmp_path, **kwargs):
     return load_workbook(out)
 
 
-def test_workbook_has_three_sheets(tmp_path):
+def test_workbook_sheets(tmp_path):
     wb = _report(tmp_path)
-    assert wb.sheetnames == ["Non-conformities", "Coverage gaps", "Summary"]
+    assert wb.sheetnames == ["Non-conformities", "By vulnerability", "Coverage gaps", "Summary"]
 
 
 def test_non_conformities_sheet(tmp_path):
@@ -82,3 +82,16 @@ def test_untrusted_text_is_not_written_as_formula(tmp_path):
     assert title.data_type == "s"
     assert title.value == '=HYPERLINK("http://example.test","x")'
     assert ws.cell(2, AUTO_COLUMNS.index("Solution") + 1).value == "badchar"
+
+
+def test_by_vulnerability_sheet(tmp_path):
+    wb = _report(tmp_path)
+    ws = wb["By vulnerability"]
+    header = [c.value for c in ws[1]]
+    first = dict(zip(header, (c.value for c in ws[2])))
+    assert first["Severity"] == "Critical"
+    assert first["Hosts"] == 1
+    assert first["Affected"] == "192.0.2.20 80/tcp"
+    assert ws.max_row - 1 == 6  # one row per distinct NVT
+    summary = {r[0].value: r[1].value for r in wb["Summary"].iter_rows(min_row=2)}
+    assert summary["Distinct vulnerabilities"] == 6

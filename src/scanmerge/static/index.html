@@ -180,6 +180,7 @@
   <section class="screen" id="findings" hidden aria-labelledby="findings-title">
     <button class="back" data-go="results"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Results</button>
     <h1 id="findings-title" style="margin:0">Findings</h1>
+    <div class="filters" id="views" role="group" aria-label="View"></div>
     <div class="filters" id="filters" role="group" aria-label="Filter by severity"></div>
     <div class="list" id="finding-list" aria-live="polite"></div>
     <button class="btn" data-download>
@@ -199,7 +200,7 @@ const ICON_WARN = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d
 const ICON_OK = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>';
 
 const $ = (sel) => document.querySelector(sel);
-const state = { nmap: [], openvas: null, result: null, filter: "All" };
+const state = { nmap: [], openvas: null, result: null, filter: "All", view: "grouped" };
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -363,7 +364,9 @@ function renderResults() {
     tile.addEventListener("click", () => openFindings(sev));
     return tile;
   }));
-  $("#see-findings").textContent = s.findings ? `See ${plural(s.findings, "finding", "findings")}` : "No findings";
+  $("#see-findings").textContent = s.findings
+    ? `See ${plural(s.findings, "finding", "findings")} · ${plural(r.vulnerabilities.length, "issue", "issues")}`
+    : "No findings";
   $("#see-findings").disabled = !s.findings;
 }
 
@@ -373,20 +376,50 @@ function openFindings(filter) {
   show("findings");
 }
 
+function toggle(label, pressed, onClick) {
+  const b = el("button", null, label);
+  b.type = "button";
+  b.setAttribute("aria-pressed", String(pressed));
+  b.addEventListener("click", onClick);
+  return b;
+}
+
+function details(summary, content) {
+  const d = el("details");
+  d.append(el("summary", null, summary), content);
+  return d;
+}
+
+function vulnerabilityCard(v) {
+  const card = el("article", "finding");
+  card.append(el("span", `pill ${v.severity}`, v.cvss === null ? v.severity : `${v.severity} ${v.cvss.toFixed(1)}`));
+  card.append(el("span", "t", v.title || "(untitled)"));
+  card.append(el("span", "m", `Affects ${plural(v.hosts, "host", "hosts")} · ${plural(v.affected.length, "port", "ports")}`));
+  if (v.cves.length) card.append(el("span", "m", v.cves.join(", ")));
+  const ul = el("ul");
+  ul.style.cssText = "margin:6px 0 0;padding-left:18px";
+  v.affected.forEach((a) => ul.append(el("li", null, [a.hostname ? `${a.ip} (${a.hostname})` : a.ip, a.port].join(" · "))));
+  card.append(details("Affected hosts", ul));
+  if (v.solution) card.append(details("Solution", el("p", null, v.solution)));
+  return card;
+}
+
 function renderFindings() {
-  const all = state.result.findings;
+  const grouped = state.view === "grouped";
+  const all = grouped ? state.result.vulnerabilities : state.result.findings;
+  $("#views").replaceChildren(
+    toggle(`By vulnerability ${state.result.vulnerabilities.length}`, grouped, () => { state.view = "grouped"; renderFindings(); }),
+    toggle(`Each finding ${state.result.findings.length}`, !grouped, () => { state.view = "each"; renderFindings(); }),
+  );
   $("#filters").replaceChildren(...["All", ...SEVERITIES].map((name) => {
-    const count = name === "All" ? all.length : state.result.summary.by_severity[name];
-    const b = el("button", null, `${name} ${count}`);
-    b.type = "button";
-    b.setAttribute("aria-pressed", String(state.filter === name));
-    b.addEventListener("click", () => { state.filter = name; renderFindings(); });
-    return b;
+    const count = name === "All" ? all.length : all.filter((x) => x.severity === name).length;
+    return toggle(`${name} ${count}`, state.filter === name, () => { state.filter = name; renderFindings(); });
   }));
 
   const shown = state.filter === "All" ? all : all.filter((f) => f.severity === state.filter);
   const list = $("#finding-list");
   if (!shown.length) { list.replaceChildren(el("p", "empty", "No findings with this severity.")); return; }
+  if (grouped) { list.replaceChildren(...shown.map(vulnerabilityCard)); return; }
   list.replaceChildren(...shown.map((f) => {
     const card = el("article", "finding");
     card.append(el("span", `pill ${f.severity}`, f.cvss === null ? f.severity : `${f.severity} ${f.cvss.toFixed(1)}`));
@@ -394,11 +427,7 @@ function renderFindings() {
     const where = [f.hostname ? `${f.ip} (${f.hostname})` : f.ip, f.port, f.service].filter(Boolean).join(" · ");
     card.append(el("span", "m", where));
     if (f.cves.length) card.append(el("span", "m", f.cves.join(", ")));
-    if (f.solution) {
-      const details = el("details");
-      details.append(el("summary", null, "Solution"), el("p", null, f.solution));
-      card.append(details);
-    }
+    if (f.solution) card.append(details("Solution", el("p", null, f.solution)));
     return card;
   }));
 }

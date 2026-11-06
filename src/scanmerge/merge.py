@@ -95,3 +95,38 @@ def merge(
         coverage_checked=both,
         warnings=notes,
     )
+
+
+@dataclass
+class Vulnerability:
+    """One issue (NVT) with every host/port it affects, for remediation planning."""
+
+    title: str
+    cvss: float | None
+    severity: str
+    cves: list[str]
+    solution: str
+    affected: list[Finding]
+
+    @property
+    def host_count(self) -> int:
+        return len({f.ip for f in self.affected})
+
+
+def by_vulnerability(findings: list[Finding]) -> list[Vulnerability]:
+    """Group findings by NVT (title when the OID is missing), most severe and widespread first."""
+    groups: dict[str, Vulnerability] = {}
+    for f in findings:
+        g = groups.get(f.nvt_oid or f.title)
+        if g is None:
+            groups[f.nvt_oid or f.title] = Vulnerability(f.title, f.cvss, f.severity, list(f.cves), f.solution, [f])
+            continue
+        g.affected.append(f)
+        g.cves = sorted(set(g.cves) | set(f.cves))
+        g.solution = g.solution or f.solution
+        if (f.cvss or 0) > (g.cvss or 0):
+            g.cvss, g.severity = f.cvss, f.severity
+    return sorted(
+        groups.values(),
+        key=lambda g: (SEVERITIES.index(g.severity), -(g.cvss or 0), -g.host_count, g.title),
+    )
