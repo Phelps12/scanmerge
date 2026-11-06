@@ -10,7 +10,7 @@ from xml.etree.ElementTree import Element
 from defusedxml import DefusedXmlException
 from defusedxml.ElementTree import ParseError, parse
 
-from .models import Host, Service
+from .models import Finding, Host, Service
 
 
 class ScanParseError(ValueError):
@@ -59,3 +59,81 @@ def parse_nmap(path: str | Path) -> tuple[list[Host], list[Service]]:
             port = f"{p.get('portid', '')}/{p.get('protocol', '')}"
             services.append(Service(ip, port, attrs.get("name", ""), version))
     return hosts, services
+
+
+def _text(el: Element | None, path: str) -> str:
+    found = el.find(path) if el is not None else None
+    return (found.text or "").strip() if found is not None else ""
+
+
+def _float(value: str) -> float | None:
+    try:
+        return float(value)
+    except ValueError:
+        return None
+
+
+def _tag(tags: str, key: str) -> str:
+    """Read one key from GVM's pipe-separated `<tags>` text (key=value|key=value)."""
+    for part in tags.split("|"):
+        name, _, value = part.partition("=")
+        if name == key:
+            return value.strip()
+    return ""
+
+
+def _cves(nvt: Element | None) -> list[str]:
+    if nvt is None:
+        return []
+    cves = [r.get("id", "") for r in nvt.findall("refs/ref") if r.get("type", "").lower() == "cve"]
+    if not cves:  # older GVM: comma-separated <cve> text, "NOCVE" when empty
+        cves = [c.strip() for c in _text(nvt, "cve").split(",")]
+    return sorted({c for c in cves if c and c.upper() != "NOCVE"})
+
+
+def parse_openvas(path: str | Path) -> tuple[list[Host], list[Finding]]:
+    """Return the analysed hosts and the results of an OpenVAS/GVM XML report.
+
+    A host counts as analysed if the report lists it under <host>, even with no
+    results; hosts that only appear in results are added too.
+    """
+    root = _load(path)
+    if root.tag not in ("report", "get_reports_response"):
+        raise ScanParseError(f"{path}: not an OpenVAS/GVM report (root element <{root.tag}>)")
+
+    hosts: dict[str, Host] = {}
+    for report in root.iter("report"):
+        for h in report.findall("host"):
+            ip = _text(h, "ip")
+            if ip:
+                hostname = _text(h, "detail[name='hostname']/value")
+                hosts.setdefault(ip, Host(ip, hostname, {"openvas"}))
+
+    findings: list[Finding] = []
+    for r in root.iterfind(".//results/result"):
+        host_el = r.find("host")
+        ip = (host_el.text or "").strip() if host_el is not None else ""
+        if not ip:
+            continue
+        nvt = r.find("nvt")
+        tags = _text(nvt, "tags")
+        severity = _float(_text(r, "severity"))
+        if severity is None:
+            severity = _float(_text(nvt, "cvss_base"))
+        hostname = _text(host_el, "hostname")
+        findings.append(
+            Finding(
+                ip=ip,
+                port=_text(r, "port"),
+                title=_text(nvt, "name") or _text(r, "name"),
+                cvss=severity,
+                cves=_cves(nvt),
+                solution=_text(nvt, "solution") or _tag(tags, "solution"),
+                source="openvas",
+                nvt_oid=nvt.get("oid", "") if nvt is not None else "",
+                hostname=hostname,
+            )
+        )
+        host = hosts.setdefault(ip, Host(ip, hostname, {"openvas"}))
+        host.hostname = host.hostname or hostname
+    return list(hosts.values()), findings

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic GVM report export: documentation networks only (RFC 5737), public CVEs, fictional OIDs. -->
+<report id="00000000-0000-4000-8000-000000000001" format_id="a994b278-1f62-11e1-96ac-406186ea4fc5" extension="xml" content_type="text/xml">
+  <owner><name>auditor</name></owner>
+  <name>2026-11-01T10:00:00Z</name>
+  <task id="00000000-0000-4000-8000-000000000002"><name>Store A full scan</name></task>
+  <report id="00000000-0000-4000-8000-000000000001">
+    <gmp><version>22.5</version></gmp>
+    <scan_run_status>Done</scan_run_status>
+    <results start="1" max="100">
+      <result id="r1">
+        <name>Apache HTTP Server 2.4.49 Path Traversal and RCE</name>
+        <host>192.0.2.20<asset asset_id="a1"/><hostname></hostname></host>
+        <port>80/tcp</port>
+        <nvt oid="1.3.6.1.4.1.25623.1.0.900001">
+          <type>nvt</type>
+          <name>Apache HTTP Server 2.4.49 Path Traversal and RCE</name>
+          <cvss_base>9.8</cvss_base>
+          <tags>summary=Path traversal in Apache 2.4.49.|solution=Update to version 2.4.51 or later.|solution_type=VendorFix</tags>
+          <solution type="VendorFix">Update to version 2.4.51 or later.</solution>
+          <refs>
+            <ref type="cve" id="CVE-2021-42013"/>
+            <ref type="cve" id="CVE-2021-41773"/>
+            <ref type="url" id="https://httpd.apache.org/security/vulnerabilities_24.html"/>
+          </refs>
+        </nvt>
+        <threat>High</threat>
+        <severity>9.8</severity>
+      </result>
+      <result id="r2">
+        <name>OpenSSL Heartbleed</name>
+        <host>192.0.2.10<asset asset_id="a2"/><hostname>fw.example.test</hostname></host>
+        <port>443/tcp</port>
+        <nvt oid="1.3.6.1.4.1.25623.1.0.900002">
+          <name>OpenSSL TLS 'heartbeat' Extension Information Disclosure (Heartbleed)</name>
+          <cvss_base>7.5</cvss_base>
+          <tags>solution=Update OpenSSL to 1.0.1g or later.</tags>
+          <refs><ref type="cve" id="CVE-2014-0160"/></refs>
+        </nvt>
+        <threat>High</threat>
+        <severity>7.5</severity>
+      </result>
+      <result id="r3">
+        <name>OpenSSL Heartbleed</name>
+        <host>192.0.2.10<asset asset_id="a2"/><hostname>fw.example.test</hostname></host>
+        <port>443/tcp</port>
+        <nvt oid="1.3.6.1.4.1.25623.1.0.900002">
+          <name>OpenSSL TLS 'heartbeat' Extension Information Disclosure (Heartbleed)</name>
+          <cvss_base>7.5</cvss_base>
+          <refs><ref type="cve" id="CVE-2014-0160"/></refs>
+        </nvt>
+        <threat>High</threat>
+        <severity>7.5</severity>
+      </result>
+      <result id="r4">
+        <name>Weak MAC Algorithm(s) Supported (SSH)</name>
+        <host>192.0.2.10</host>
+        <port>22/tcp</port>
+        <nvt oid="1.3.6.1.4.1.25623.1.0.900003">
+          <name>Weak MAC Algorithm(s) Supported (SSH)</name>
+          <cvss_base>2.6</cvss_base>
+        </nvt>
+        <threat>Low</threat>
+        <severity>2.6</severity>
+      </result>
+      <result id="r5">
+        <name>SMB signing not required</name>
+        <host>192.0.2.20</host>
+        <port>445/tcp</port>
+        <nvt oid="1.3.6.1.4.1.25623.1.0.900004">
+          <name>SMB signing not required</name>
+        </nvt>
+        <threat>Medium</threat>
+        <severity>5.0</severity>
+      </result>
+      <result id="r6">
+        <name>OS Detection Consolidation and Reporting</name>
+        <host>192.0.2.20</host>
+        <port>general/tcp</port>
+        <nvt oid="1.3.6.1.4.1.25623.1.0.900005"><name>OS Detection Consolidation and Reporting</name></nvt>
+        <threat>Log</threat>
+        <severity>0.0</severity>
+      </result>
+      <result id="r7">
+        <name>Microsoft SMBv1 Remote Code Execution (MS17-010)</name>
+        <host>198.51.100.7</host>
+        <port>445/tcp</port>
+        <nvt oid="1.3.6.1.4.1.25623.1.0.900006">
+          <name>Microsoft SMBv1 Remote Code Execution (MS17-010)</name>
+          <refs><ref type="cve" id="CVE-2017-0144"/></refs>
+          <solution type="VendorFix">Apply the MS17-010 updates and disable SMBv1.</solution>
+        </nvt>
+        <threat>High</threat>
+        <severity>8.1</severity>
+      </result>
+    </results>
+    <host>
+      <ip>192.0.2.10</ip>
+      <detail><name>hostname</name><value>fw.example.test</value></detail>
+    </host>
+    <host><ip>192.0.2.20</ip></host>
+    <host><ip>198.51.100.5</ip></host>
+    <host><ip>198.51.100.7</ip></host>
+  </report>
+</report>
