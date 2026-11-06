@@ -101,6 +101,7 @@ def write_report(path: str | Path, merged: MergedScan, site: str = "", skipped: 
     ]
     rows += [(f"  {sev}", sum(f.severity == sev for f in merged.findings)) for sev in SEVERITIES]
     rows += [("Skipped input file", name) for name in skipped]
+    rows += [("Warning", w) for w in merged.warnings]
     for row in rows:
         _append(ws, list(row))
 

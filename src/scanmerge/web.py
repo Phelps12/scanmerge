@@ -63,13 +63,13 @@ def analyse(payload) -> tuple[int, dict]:
     except BadRequest as e:
         return 400, {"error": f"Invalid request: {e}."}
 
-    nmap, openvas, errors = load_scans(nmap_files, openvas_file)
+    nmap, openvas, errors, warnings = load_scans(nmap_files, openvas_file)
     messages = [message for _, message in errors]
     if nmap is None and openvas is None:
         return 422, {"error": "No valid input file, nothing to report.", "errors": messages}
 
     site = site.strip()[:MAX_NAME]
-    merged = merge(nmap, openvas)
+    merged = merge(nmap, openvas, warnings)
     excel = io.BytesIO()
     write_report(excel, merged, site, [name for name, _ in errors])
 
@@ -81,6 +81,7 @@ def analyse(payload) -> tuple[int, dict]:
     return 200, {
         "site": site,
         "errors": messages,
+        "warnings": merged.warnings,
         "summary": {
             "hosts_seen": len(merged.hosts),
             "analysed": len(merged.analysed) if merged.analysed is not None else None,

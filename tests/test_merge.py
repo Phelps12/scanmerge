@@ -88,3 +88,16 @@ def test_finding_hostname_filled_from_nmap():
     result = merge(_nmap(), parse_openvas(FIXTURES / "openvas_store.xml"))
     ssh = next(f for f in result.findings if f.port == "22/tcp")
     assert ssh.hostname == "fw.example.test"
+
+
+def test_warns_when_nmap_and_openvas_share_no_host():
+    nmap = ([Host("192.0.2.10", "", {"nmap"})], [])
+    openvas = ([Host("198.51.100.10", "", {"openvas"})], [])
+    result = merge(nmap, openvas, ["input note"])
+    assert result.warnings[0] == "input note"
+    assert "no host in common" in result.warnings[1]
+
+
+def test_no_overlap_warning_when_hosts_match():
+    result = merge(_nmap(), parse_openvas(FIXTURES / "openvas_store.xml"))
+    assert result.warnings == []

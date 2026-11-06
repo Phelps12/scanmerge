@@ -29,6 +29,7 @@ class MergedScan:
     not_analysed: list[Host]  # up in Nmap, not analysed by OpenVAS
     not_in_nmap: list[Host]  # analysed by OpenVAS, not seen by Nmap
     coverage_checked: bool  # False when one side had no valid file
+    warnings: list[str]  # notes for the reader: input warnings plus merge checks
 
     def open_ports(self, ip: str) -> list[Service]:
         return sorted((s for (i, _), s in self.services.items() if i == ip), key=lambda s: port_key(s.port))
@@ -37,11 +38,13 @@ class MergedScan:
 def merge(
     nmap: tuple[list[Host], list[Service]] | None,
     openvas: tuple[list[Host], list[Finding]] | None,
+    warnings: list[str] | None = None,
 ) -> MergedScan:
     """Merge parsed inputs; pass None for a side with no valid file.
 
     Coverage gaps are only computed when both sides are present, otherwise
-    every host would look like a gap.
+    every host would look like a gap. `warnings` (e.g. from load_scans) are
+    carried into the result.
     """
     nmap_hosts, services = nmap or ([], [])
     openvas_hosts, findings = openvas or ([], [])
@@ -72,6 +75,12 @@ def merge(
     analysed = {h.ip for h in openvas_hosts} if openvas is not None else None
     seen_by_nmap = {h.ip for h in nmap_hosts}
     both = nmap is not None and openvas is not None
+    notes = list(warnings or [])
+    if both and seen_by_nmap and analysed and not seen_by_nmap & analysed:
+        notes.append(
+            "Nmap and OpenVAS have no host in common: check that both scans target the same network "
+            "(wrong OpenVAS target, or files from different sites?)"
+        )
 
     def by_ip(ips) -> list[Host]:
         return sorted((hosts[ip] for ip in ips), key=lambda h: ip_key(h.ip))
@@ -84,4 +93,5 @@ def merge(
         not_analysed=by_ip(seen_by_nmap - analysed) if both else [],
         not_in_nmap=by_ip(analysed - seen_by_nmap) if both else [],
         coverage_checked=both,
+        warnings=notes,
     )

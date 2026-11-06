@@ -117,8 +117,29 @@ def test_parses_in_memory_upload_and_reports_its_name():
 
 
 def test_load_scans_skips_invalid_files():
-    nmap, openvas, errors = load_scans([str(FIXTURES / "xxe.xml"), str(FIXTURES / "nmap_store_tcp.xml")],
+    nmap, openvas, errors, warnings = load_scans([str(FIXTURES / "xxe.xml"), str(FIXTURES / "nmap_store_tcp.xml")],
                                        str(FIXTURES / "malformed.xml"))
     assert len(nmap[0]) == 4
     assert openvas is None
     assert [name for name, _ in errors] == [str(FIXTURES / "xxe.xml"), str(FIXTURES / "malformed.xml")]
+
+
+def test_filtered_export_is_reported(tmp_path):
+    report = tmp_path / "filtered.xml"
+    report.write_text(
+        "<report><report><filters><term>levels=chml min_qod=70</term></filters>"
+        "<result_count>63<full>484</full><filtered>63</filtered></result_count>"
+        "<results/><host><ip>192.0.2.10</ip></host></report></report>"
+    )
+    warnings = []
+    parse_openvas(report, warnings)
+    assert warnings == [
+        f"{report}: the export holds 63 of 484 results (filter: levels=chml min_qod=70); "
+        "results hidden by the filter are not in this report"
+    ]
+
+
+def test_unfiltered_export_has_no_warning():
+    warnings = []
+    parse_openvas(FIXTURES / "openvas_store.xml", warnings)
+    assert warnings == []

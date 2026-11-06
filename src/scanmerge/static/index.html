@@ -329,6 +329,7 @@ function renderResults() {
     r.errors.forEach((e) => ul.append(el("li", null, e)));
     errors.push(alertBox("warn", ICON_WARN, `${plural(r.errors.length, "file was", "files were")} skipped`, ul));
   }
+  r.warnings.forEach((w) => errors.push(alertBox("warn", ICON_WARN, "Check your inputs", el("span", null, w))));
   $("#input-errors").replaceChildren(...errors);
 
   const coverage = [];

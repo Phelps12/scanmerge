@@ -57,6 +57,8 @@ scanmerge --nmap scan_tcp.xml --nmap scan_udp.xml --openvas report.xml --site "S
 
 An invalid input file (malformed, unsafe or unreadable) is skipped with an error on stderr and listed in the Summary sheet. If the OpenVAS report or all the Nmap files are invalid, the coverage check is skipped rather than flagging every host.
 
+scanmerge also warns (terminal, web page and Summary sheet) when the OpenVAS export was filtered, e.g. `levels=chml` or `min_qod`, so it holds fewer results than the scan found, and when Nmap and OpenVAS share no host at all, which usually means a wrong OpenVAS target or files from different sites.
+
 Exit codes: `0` report written, `1` no valid input file or the report could not be written, `2` invalid arguments.
 
 ### Web interface

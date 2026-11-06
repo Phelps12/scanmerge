@@ -39,13 +39,17 @@ def _load(source: Source) -> Element:
 
 def load_scans(
     nmap_sources: list[Source], openvas_source: Source
-) -> tuple[tuple[list[Host], list[Service]] | None, tuple[list[Host], list[Finding]] | None, list[tuple[str, str]]]:
+) -> tuple[
+    tuple[list[Host], list[Service]] | None, tuple[list[Host], list[Finding]] | None, list[tuple[str, str]], list[str]
+]:
     """Parse every input, skipping invalid files.
 
-    Returns (nmap, openvas, errors): a side is None when none of its files was
-    valid, and errors are (file name, message) pairs.
+    Returns (nmap, openvas, errors, warnings): a side is None when none of its
+    files was valid, errors are (file name, message) pairs for skipped files,
+    and warnings are notes about files that were used.
     """
     errors: list[tuple[str, str]] = []
+    warnings: list[str] = []
     nmap = None
     for src in nmap_sources:
         try:
@@ -55,11 +59,11 @@ def load_scans(
             continue
         nmap = (nmap[0] + hosts, nmap[1] + services) if nmap else (hosts, services)
     try:
-        openvas = parse_openvas(openvas_source)
+        openvas = parse_openvas(openvas_source, warnings)
     except ScanParseError as e:
         errors.append((source_name(openvas_source), str(e)))
         openvas = None
-    return nmap, openvas, errors
+    return nmap, openvas, errors, warnings
 
 
 def parse_nmap(path: Source) -> tuple[list[Host], list[Service]]:
@@ -125,15 +129,26 @@ def _cves(nvt: Element | None) -> list[str]:
     return sorted({c for c in cves if c and c.upper() != "NOCVE"})
 
 
-def parse_openvas(path: Source) -> tuple[list[Host], list[Finding]]:
+def parse_openvas(path: Source, warnings: list[str] | None = None) -> tuple[list[Host], list[Finding]]:
     """Return the analysed hosts and the results of an OpenVAS/GVM XML report.
 
     A host counts as analysed if the report lists it under <host>, even with no
-    results; hosts that only appear in results are added too.
+    results; hosts that only appear in results are added too. If `warnings` is
+    given, a note is appended when the export filter left results out.
     """
     root = _load(path)
     if root.tag not in ("report", "get_reports_response"):
         raise ScanParseError(f"{source_name(path)}: not an OpenVAS/GVM report (root element <{root.tag}>)")
+
+    count = root.find(".//result_count")
+    full, shown = _text(count, "full"), _text(count, "filtered")
+    if warnings is not None and full.isdigit() and shown.isdigit() and int(shown) < int(full):
+        term = _text(root, ".//filters/term")
+        warnings.append(
+            f"{source_name(path)}: the export holds {shown} of {full} results"
+            + (f" (filter: {term})" if term else "")
+            + "; results hidden by the filter are not in this report"
+        )
 
     hosts: dict[str, Host] = {}
     for report in root.iter("report"):

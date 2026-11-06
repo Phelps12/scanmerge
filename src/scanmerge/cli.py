@@ -41,6 +41,8 @@ def _print_summary(merged: MergedScan, site: str, output: str) -> None:
         print(f"Site: {site}")
     print(f"Hosts seen: {len(merged.hosts)} | analysed by OpenVAS: {analysed} | coverage gaps: {gaps}")
     print(f"Findings: {len(merged.findings)} ({counts})")
+    for w in merged.warnings:
+        print(f"WARNING: {w}")
     for h in merged.not_analysed:
         name = f" ({h.hostname})" if h.hostname else ""
         print(f"WARNING: {h.ip}{name} is up in Nmap but was not analysed by OpenVAS")
@@ -53,7 +55,7 @@ def _print_summary(merged: MergedScan, site: str, output: str) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    nmap, openvas, errors = load_scans(args.nmap, args.openvas)
+    nmap, openvas, errors, warnings = load_scans(args.nmap, args.openvas)
     for _, message in errors:
         _error(message)
     skipped = [name for name, _ in errors]
@@ -62,7 +64,7 @@ def main(argv: list[str] | None = None) -> int:
         _error("no valid input file, nothing to report")
         return 1
 
-    merged = merge(nmap, openvas)
+    merged = merge(nmap, openvas, warnings)
     try:
         write_report(args.output, merged, args.site, skipped)
     except OSError as e:

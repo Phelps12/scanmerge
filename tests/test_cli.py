@@ -59,3 +59,13 @@ def test_missing_required_arguments_exit_with_usage_error():
     with pytest.raises(SystemExit) as exc:
         main(["--nmap", TCP])
     assert exc.value.code == 2
+
+
+def test_prints_warning_when_scans_share_no_host(tmp_path, capsys):
+    other = tmp_path / "other.xml"
+    other.write_text("<report><report><host><ip>203.0.113.9</ip></host></report></report>")
+    out = tmp_path / "report.xlsx"
+    assert main(["--nmap", TCP, "--openvas", str(other), "-o", str(out)]) == 0
+    assert "WARNING: Nmap and OpenVAS have no host in common" in capsys.readouterr().out
+    summary = {r[0].value: r[1].value for r in load_workbook(out)["Summary"].iter_rows(min_row=2)}
+    assert "no host in common" in summary["Warning"]

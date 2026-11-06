@@ -122,3 +122,8 @@ def test_server_rejects_foreign_host_header(server):
 def test_server_rejects_bad_json_and_unknown_paths(server):
     assert _request(server, "POST", "/api/analyse", "{nope")[0] == 400
     assert _request(server, "GET", "/etc/passwd")[0] == 404
+
+
+def test_analyse_returns_warnings():
+    status, body = analyse(_payload())
+    assert status == 200 and body["warnings"] == []
