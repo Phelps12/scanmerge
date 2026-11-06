@@ -28,6 +28,7 @@ class MergedScan:
     analysed: set[str] | None  # IPs OpenVAS analysed; None without OpenVAS input
     not_analysed: list[Host]  # up in Nmap, not analysed by OpenVAS
     not_in_nmap: list[Host]  # analysed by OpenVAS, not seen by Nmap
+    coverage_checked: bool  # False when one side had no valid file
 
     def open_ports(self, ip: str) -> list[Service]:
         return sorted((s for (i, _), s in self.services.items() if i == ip), key=lambda s: port_key(s.port))
@@ -82,4 +83,5 @@ def merge(
         analysed=analysed,
         not_analysed=by_ip(seen_by_nmap - analysed) if both else [],
         not_in_nmap=by_ip(analysed - seen_by_nmap) if both else [],
+        coverage_checked=both,
     )
