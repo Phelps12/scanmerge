@@ -57,6 +57,18 @@ An invalid input file (malformed, unsafe or unreadable) is skipped with an error
 
 Exit codes: `0` report written, `1` no valid input file or the report could not be written, `2` invalid arguments.
 
+### Web interface
+
+For people who prefer not to use the terminal, the same merge runs behind a local web page:
+
+```bash
+scanmerge-ui
+```
+
+It opens `http://127.0.0.1:8780/` in the browser (`--port` to change it, `--no-browser` to skip opening). The page has three steps: add the Nmap files and the OpenVAS report, see the coverage gaps and the count per severity, then browse the findings by severity and download the Excel report, identical to the CLI one. Stop it with Ctrl+C.
+
+The server only listens on 127.0.0.1, so other machines on the network cannot reach it. Uploads are processed in memory and never written to disk. It uses only the Python standard library, the page loads nothing from the internet, and requests sent with a foreign `Host` header are refused (DNS rebinding).
+
 Scan results and reports contain sensitive network data: `.gitignore` excludes `*.xml`, `*.xlsx` and `reports/` (except the synthetic test fixtures).
 
 ## Example output
@@ -104,6 +116,8 @@ src/scanmerge/
   merge.py     join, deduplication, coverage gaps, sorting
   excel.py     the three-sheet workbook
   cli.py       command line
+  web.py       local web interface (scanmerge-ui) and its /api/analyse endpoint
+  static/      the single-page UI
 tests/         pytest suite; fixtures are synthetic
 ```
 
